@@ -1,0 +1,27 @@
+{
+  "name": "iteck",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",    
+    "export": "next build && next export",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "axios": "^0.27.2",
+    "lightgallery": "^2.5.0",
+    "next": "^12.0.7",
+    "rc-slider": "^10.0.1",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-modal-video": "^1.2.9",
+    "sass": "^1.54.3",
+    "swiper": "^8.3.2"
+  },
+  "devDependencies": {
+    "eslint": "8.21.0",
+    "eslint-config-next": "12.2.3"
+  }
+}
