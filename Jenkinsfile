@@ -1,31 +1,24 @@
 pipeline {
-    agent any
-
     environment {
-        // BITBUCKET_CRED = credentials('gitlabcred')
-        imagename = "registry.gitlab.com/candakurniawan/belajar-devops" // Ganti URL dan nama gambar sesuai dengan yang sesuai di GitLab Container Registry
+        imagename = "registry.gitlab.com/candakurniawan/belajar-devops"
+        registryCredential = 'gitlabcred'
     }
-    //stage clone repo
+    agent any
     stages {
         stage('Clone Repository') {
             steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: "${params.Branch}"]],
-                    userRemoteConfigs: [[credentialsId: 'bitbucketcred',
-                        url: "https://gitlab.com/candakurniawan/belajar-devops.git"]],
-                    poll: true
-                ])
+                git(url: 'https://github.com/maulanamalikjb147/code-devops.git', branch: "${params.Branch}", credentialsId: 'tokengithub')
             }
         }
-    //stage build image
-        stage('Build Image') {
+        stage('Building image') {
             steps {
                 script {
-                    docker.build("${imagename}/${params['service-name']}:${params['versionimage']}", "./${params['service-name']}")
+                    dir("${params['service-name']}") {
+                        sh "docker build --no-cache -t $imagename/${params['service-name']}:${params['versionimage']} ."
+                    }
                 }
             }
         }
-        
         stage('Push to registry') {
             steps {
                 script {
@@ -37,30 +30,27 @@ pipeline {
                 }
             }
         }
-
-        stage('Update Repo Gitlab') {
+        stage('Clone Additional Repository') {
             steps {
-                script {
-                    sh "cd /var/lib/jenkins/repogitlab/flux && git checkout main"
-                    sh "cd /var/lib/jenkins/repogitlab/flux && git pull"
-                    sh "cd /var/lib/jenkins/repogitlab/flux && git checkout ${params['Environment']}"
-                    sh "cd /var/lib/jenkins/repogitlab/flux && git pull"
-                    sh "sed -i '/        image: /s/.*/        image:/' /var/lib/jenkins/repogitlab/flux/clusters/my-cluster/apps/${params['service-name']}/deployment.yaml" //remove taging image
-                    sh "sed -i -r 's#image:.*#image: ${imagename}/${params['service-name']}:${params['versionimage']}#' /var/lib/jenkins/repogitlab/flux/clusters/my-cluster/apps/${params['service-name']}/deployment.yaml" //change name image
-                    sh "sed -i '/        namespace: /s/.*/        namespace:/' /var/lib/jenkins/repogitlab/flux/clusters/my-cluster/apps/${params['service-name']}/deployment.yaml" //remove namespace deployment
-                    sh "sed -i -r 's#namespace:.*#namespace: ${params['Environment']}#' /var/lib/jenkins/repogitlab/flux/clusters/my-cluster/apps/${params['service-name']}/deployment.yaml" //change namespace deployment
-                    sh "sed -i '/        namespace: /s/.*/        namespace:/' /var/lib/jenkins/repogitlab/flux/clusters/my-cluster/apps/${params['service-name']}/service.yaml" //remove namespace services
-                    sh "sed -i -r 's#namespace:.*#namespace: ${params['Environment']}#' /var/lib/jenkins/repogitlab/flux/clusters/my-cluster/apps/${params['service-name']}/service.yaml" //change namespace deployment
-                    sh "git config --global user.name 'JenkinsCI'"
-                    sh "git config --global user.email 'jenkins@admin.com'"
-                    sh "cd /var/lib/jenkins/repogitlab/flux && git add ."
-                    sh "cd /var/lib/jenkins/repogitlab/flux && git commit -m 'Update from JenkinsCI'"   
-                    sh "cd /var/lib/jenkins/repogitlab/flux && git push"
-                    //sh "cd /var/lib/jenkins/repogitlab/flux && git merge main"
-                }
+                git(url: 'https://gitlab.com/candakurniawan/belajar-devops.git', branch: "${params['Environment']}", credentialsId: 'gitlabcred')
             }
         }
-
+        stage('Update Manifest Kubernetes') {
+            steps {
+                dir(apps/"${params['service-name']}")
+                sh "sed -i '/        image: /s/.*/        image: ${imagename}/${params['service-name']}:${params['versionimage']}/' deployment.yaml" //updateImage
+                sh "sed -i 's/namespace: .*/namespace: ${params['Environment']}/' deployment.yaml" //updateNamespace
+                sh "sed -i '/^ *name: /s/.*/  name: ${params['service-name']}/' deployment.yaml "
+                sh "sed -i '/        image: /s/.*/        image: ${imagename}/${params['service-name']}:${params['versionimage']}/' service.yaml" //updateImage
+                sh "sed -i 's/namespace: .*/namespace: ${params['Environment']}/' service.yaml" //updateNamespace
+                sh "sed -i '/^ *name: /s/.*/  name: ${params['service-name']}/' service.yaml "
+                sh "git config --global user.name 'JenkinsCI'"
+                sh "git config --global user.email 'jenkins@admin.com'"
+                sh "git add ."
+                sh "git commit -m 'Update from JenkinsCI'"   
+                sh "git push"
+            }
+        }
         stage('Clean Workspace') {
             steps {
                 cleanWs()
