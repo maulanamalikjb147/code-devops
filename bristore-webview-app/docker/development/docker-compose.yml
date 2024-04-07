@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  bristore-webview-app-development:
+    build:
+      context: ../../
+      dockerfile: docker/development/Dockerfile
+    image: bristore-webview-app-development
+    ports:
+      - '3001:3000'

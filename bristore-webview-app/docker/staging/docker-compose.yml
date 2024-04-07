@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  bristore-webview-app-staging:
+    build:
+      context: ../../
+      dockerfile: docker/staging/Dockerfile
+    image: bristore-webview-app-staging
+    ports:
+      - '3002:3000'
