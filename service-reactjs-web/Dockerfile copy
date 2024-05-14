@@ -3,9 +3,6 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY . ./
-
-# Copy certificates into the container
-COPY *.pem /app/cers
 RUN  npm install --production
 
 RUN npm run build
